@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h1>Welcome sendust GUI ~&nbsp&nbsp&nbsp It works !</h1>
+<hr>
+
+<input type="text" id="textInput" size="50"/>
+<button id="submitButton" onclick="send_manual_cmd(this)">send_cmd</button>
+<hr>
+
+<div>
+  <textarea id="richtext" style="width:1024px;height:500px;resize:true;" /></textarea>
+</div>
+
+
+<div>
+
+<button id="btn2" onclick="get_clients(this)">get clients</button>
+
+<label for="dropdownlist1">MESSAGE FILTER</label>
+<select name="ddl" id="dropdownlist1" onchange="updatefilter(this)">
+      <option value="default">default</option>
+
+</select>
+</div>
+
+<div>
+<input type="text" id="textInputFilter" size="50"/>
+<button id="submitButtonFilter" onclick="send_manual_cmd_Filter(this)">send_cmd</button>
+</div>
+
+
+<div>
+  <textarea id="richtext2" style="width:1024px;height:500px;resize:true;" /></textarea>
+</div>
+
+
+
+
+<script>
+
+
+class DDL
+{
+    constructor(id = 'dropdownlist1')
+    {
+        this.list_ddl = new Set();
+		this.list_extend = new Map();
+        this.ddl =  document.getElementById(id);
+        this.filter_selected = '';
+    }
+    
+    update_ddl()
+    {
+        this.clear_ddl();
+        for (var each of this.list_ddl)
+        {
+            var opt = document.createElement('option');
+            opt.value = each;
+            opt.innerHTML = this.list_extend.get(each);
+            this.ddl.appendChild(opt);
+        }
+    }
+
+    clear_list()
+    {
+        this.list_ddl.clear();
+        this.list_extend.clear();
+		this.list_ddl.add("noFilter");
+		this.list_extend.set("noFilter", "Select Filter  <----- ----- ---->");
+    }
+	
+    clear_ddl() {
+       var i, L = this.ddl.options.length - 1;
+       for(i = L; i >= 0; i--) {
+          this.ddl.remove(i);
+       }
+    }
+    
+    add_id(data)
+    {
+        this.list_ddl.add(data["id"]);
+		var extinfo = data["id"] + " - " + data["user"] + " - " + data["host"]
+		this.list_extend.set(data["id"], extinfo);
+    }
+
+}
+
+
+class RICHTEXT
+{
+    constructor(id)
+    {
+        this.data_showing = [];
+        this.id = id;
+        this.maxline = 30
+    }
+    
+    update(data)
+    {
+        let text = ''
+        this.data_showing.push(JSON.stringify(data, undefined, 2));
+        
+        while (this.data_showing.length > this.maxline)
+        {
+            this.data_showing.shift();
+        }
+        
+        for(let each of this.data_showing)
+        {
+            text += each + "\n";
+        }
+        document.getElementById(this.id).innerHTML = text;
+    };
+}
+
+
+</script>
+
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+var socket = io();
+const data_showing = [];
+
+const rtext = new RICHTEXT("richtext")
+const rtext_filter = new RICHTEXT("richtext2")
+const clients = new DDL('dropdownlist1')
+
+
+socket.onAny((eventName) =>{
+    console.log(eventName);
+    });
+
+
+socket.on("connect", on_connect)
+socket.on("server", on_server)
+socket.on("engine", on_engine)
+
+
+function on_connect(obj)
+{
+    console.log("websocket connected .. " + socket.id);
+ 
+};
+
+
+function on_server(data)
+{
+	console.log("server event arrived..");
+	if (data["msg"] == "your_id")
+	{
+		socket.emit("server", {"id" : socket.id, "type" : "gui",  "host" : detect_browser(), "msg" : "reportID"});
+	}
+    else (data["msg"] == "clients")
+    {
+        clients.add_id(data)
+        clients.update_ddl()
+    }
+    
+    rtext.update(data)
+
+};
+
+
+function on_engine(data)
+{
+    console.log(`Engine event arrived ${data}`);
+	// update_rich(data, "richtext");
+    rtext.update(data);
+    if (data["id"] == clients.filter_selected)
+    {
+        rtext_filter.update(data)
+    }
+    
+}
+
+
+
+</script>
+
+<script>
+
+
+function updatefilter(obj)
+{
+    // alert(obj.value)
+    clients.filter_selected = obj.value
+}
+
+
+function send_manual_cmd()
+{
+    var userInput = document.getElementById("textInput").value;
+	socket.emit("gui", {"id" : socket.id, "msg" : userInput});
+};
+
+
+function send_manual_cmd_Filter()
+{
+	var userInput = document.getElementById("textInputFilter").value;
+	socket.emit("gui", {"id" : socket.id, "msg" : userInput, "touser" : clients.filter_selected});
+
+}
+
+function get_clients()
+{
+    clients.clear_list()
+    socket.emit("server", {"id" : socket.id, "msg" : "get_clients"});
+       
+}
+
+
+
+function objectHasKeys(object, keys) {
+    for (let key of keys) {
+        if (object.hasOwnProperty(key)) {
+            return true; // Object has at least one key from the list
+        }
+    }
+    return false; // Object does not have any key from the list
+}
+
+
+function detect_browser(){
+ // Get the user agent string
+var userAgent = navigator.userAgent;
+    result = ""
+    // Check for common browser strings
+    if (userAgent.indexOf("Firefox") > -1) {
+        result = "Firefox";
+    } else if (userAgent.indexOf("Chrome") > -1) {
+        result = "Chrome";
+    } else if (userAgent.indexOf("Safari") > -1) {
+        result = "Safari";
+    } else if (userAgent.indexOf("MSIE") > -1 || userAgent.indexOf("Trident/") > -1) {
+        result = "Internet Explorer";
+    } else if (userAgent.indexOf("Edge") > -1) {
+        result = "Edge";
+    } else {
+        result = "Unknown";
+    }
+    return result;
+}
+
+
+
+</script>
+
+
+<script>	// Load encoder title when page loading finished..
+document.addEventListener('readystatechange', event => { 
+
+    // When HTML/DOM elements are ready:
+
+});
+</script>
+
+
+</html>
+
