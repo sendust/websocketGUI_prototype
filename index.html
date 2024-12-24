@@ -153,7 +153,7 @@ function on_server(data)
 	{
 		socket.emit("server", {"id" : socket.id, "type" : "gui",  "host" : detect_browser(), "msg" : "reportID"});
 	}
-    else (data["msg"] == "clients")
+    else if (data["msg"] == "clients")
     {
         clients.add_id(data)
         clients.update_ddl()
